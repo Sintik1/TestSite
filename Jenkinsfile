@@ -11,8 +11,8 @@ pipeline {
         // Автозапуск при push в Git (GitHub/GitLab)
         // Раскомментируйте нужный вариант:
         
-        // Для GitHub:
-        // githubPush()
+        //Для GitHub:
+        githubPush()
         
         // Для GitLab:
         // gitlab(triggerOnPush: true, triggerOnMergeRequest: true)
@@ -38,12 +38,6 @@ pipeline {
                 always {
                     // Сохранить отчёты тестов для Jenkins
                     junit 'target/surefire-reports/*.xml'
-                    
-                    // Показать результаты
-                    script {
-                        def testResults = readFile 'target/surefire-reports/TEST-TestPageAuthorization.xml'
-                        echo "Test results:\n${testResults}"
-                    }
                 }
                 success {
                     echo '✅ All tests passed!'
