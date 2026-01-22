@@ -44,7 +44,17 @@ pipeline {
                             if [ ! -d "${MAVEN_HOME}" ]; then
                                 mkdir -p ${MAVEN_DIR}
                                 cd ${MAVEN_DIR}
-                                wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+                                
+                                # Пробуем скачать через curl, если нет - устанавливаем curl
+                                if ! command -v curl &> /dev/null; then
+                                    echo "Installing curl..."
+                                    apt-get update -qq && apt-get install -y -qq curl
+                                fi
+                                
+                                echo "Downloading Maven ${MAVEN_VERSION}..."
+                                curl -L -o apache-maven-${MAVEN_VERSION}-bin.tar.gz https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+                                
+                                echo "Extracting Maven..."
                                 tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz
                                 rm apache-maven-${MAVEN_VERSION}-bin.tar.gz
                             fi
