@@ -10,7 +10,7 @@ pipeline {
         // Для использования credentials: credentials('telegram-bot-token')
         // Или напрямую: 'YOUR_BOT_TOKEN'
         TELEGRAM_BOT_TOKEN = '8263907755:AAG6nR_3bkV6ZEjD2Mhu3AdVT0kVYZsxsE0'
-        TELEGRAM_CHAT_ID = '8263907755'
+        TELEGRAM_CHAT_ID = '6284947582'
         
         // Email настройки
         EMAIL_TO = 'vsentyakov@yandex.ru'
@@ -198,11 +198,11 @@ ${emoji} ${jobName} - Build #${buildNumber}
                         // Сохраняем сообщение в файл
                         writeFile file: 'telegram_message.txt', text: message
                         
-                        // Отправляем через curl
+                        // Отправляем через curl (используем переменную chatId из окружения)
                         def response = sh(
                             script: """
                                 curl -s -X POST "${telegramUrl}" \\
-                                    -d "chat_id=${chatId}" \\
+                                    -d "chat_id=${env.TELEGRAM_CHAT_ID}" \\
                                     --data-urlencode "text@telegram_message.txt" \\
                                     -d "disable_web_page_preview=true"
                             """,
@@ -250,19 +250,23 @@ ${emoji} ${jobName} - Build #${buildNumber}
                         
                         // Fallback: пробуем через mail команду, если доступна
                         try {
+                            def fallbackSubject = "[${status}] ${jobName} - Build #${buildNumber}"
+                            def fallbackEmailTo = env.EMAIL_TO
+                            def fallbackEmailFrom = env.EMAIL_FROM ?: 'jenkins@example.com'
+                            
                             writeFile file: 'email_message.txt', text: message
                             sh """
                                 if command -v mail &> /dev/null; then
-                                    mail -s "${subject}" -r "${emailFrom}" "${emailTo}" < email_message.txt || echo "Mail command failed"
+                                    mail -s "${fallbackSubject}" -r "${fallbackEmailFrom}" "${fallbackEmailTo}" < email_message.txt || echo "Mail command failed"
                                 elif command -v sendmail &> /dev/null; then
                                     (
-                                        echo "To: ${emailTo}"
-                                        echo "From: ${emailFrom}"
-                                        echo "Subject: ${subject}"
+                                        echo "To: ${fallbackEmailTo}"
+                                        echo "From: ${fallbackEmailFrom}"
+                                        echo "Subject: ${fallbackSubject}"
                                         echo "Content-Type: text/plain; charset=UTF-8"
                                         echo ""
                                         cat email_message.txt
-                                    ) | sendmail "${emailTo}" || echo "Sendmail failed"
+                                    ) | sendmail "${fallbackEmailTo}" || echo "Sendmail failed"
                                 else
                                     echo "No mail command available. Install mailutils or configure Jenkins SMTP."
                                 fi
