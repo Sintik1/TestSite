@@ -48,41 +48,66 @@ public class PageAuth {
         return wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
     }
 
+    // Метод проверки видимости формы авторизации (для Fluent Interface)
+    public PageAuth verifyAuthFormVisible() {
+        waitForElementVisible(FORM_AUTH);
+        return this;
+    }
+
     // Метод клика по полю Логин
-    public void clickFieldLogin() {
+    public PageAuth clickFieldLogin() {
         waitForElementVisible(FORM_AUTH);
         click(FIELD_LOGIN);
         return this;
     }
 
     // Метод ввода в поле Логин
-    public void sendFieldLogin(String login) {
+    public PageAuth sendFieldLogin(String login) {
+        sendKeys(FIELD_LOGIN, login);
+        return this;
+    }
+
+    // Метод ввода логина (Fluent Interface)
+    public PageAuth enterLogin(String login) {
         sendKeys(FIELD_LOGIN, login);
         return this;
     }
 
     // Метод клика по полю Пароль
-    public void clickFieldPassword() {
+    public PageAuth clickFieldPassword() {
         waitForElementVisible(FORM_AUTH);
         click(FIELD_PASSWORD);
         return this;
     }
 
     // Метод ввода пароля в поле пароль
-    public void sendFieldPassword(String password) {
-        sendKeys(FIELD_PASSWORD, password); 
+    public PageAuth sendFieldPassword(String password) {
+        sendKeys(FIELD_PASSWORD, password);
+        return this;
+    }
+
+    // Метод ввода пароля (Fluent Interface)
+    public PageAuth enterPassword(String password) {
+        sendKeys(FIELD_PASSWORD, password);
         return this;
     }
 
     // Метод клика по кнопке "Войти"
-    public void clickButtonAuth() {
+    public PageAuth clickButtonAuth() {
+        waitForElementVisible(BUTTON_AUTH);
+        click(BUTTON_AUTH);
+        return this;
+    }
+
+    // Метод клика по кнопке "Войти" (Fluent Interface)
+    public PageAuth clickLoginButton() {
         waitForElementVisible(BUTTON_AUTH);
         click(BUTTON_AUTH);
         return this;
     }
 
     // Метод клика по кнопке "Регистрация"
-    public void clickButtonRegistration() {
+    public PageAuth clickButtonRegistration() {
         waitForElementVisible(BUTTON_REGISTRATION);
         click(BUTTON_REGISTRATION);
         return this;
@@ -107,15 +132,16 @@ public class PageAuth {
             return false;
         }
     }
-//Метод получения текста ошибки при авторизации
-    public String getTextError(){
-        try
+    // Метод получения текста ошибки при авторизации
+    public String getTextError() {
+        try {
             WebElement element = waitForElementVisible(ERROR_AUTHORIZATION);
             String actualText = element.getText();
             return actualText;
         } catch (Exception e) {
             return e.getMessage();
         }
+    }
 }
 
 
