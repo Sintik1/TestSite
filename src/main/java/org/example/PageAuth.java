@@ -8,86 +8,98 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 
+/**
+ * Page Object для страницы авторизации.
+ * Исправлено: инициализация WebDriverWait, убрано дублирование кода.
+ */
 public class PageAuth {
-    //Добавляем вебдрайвер
-    WebDriver driver;
-    WebDriverWait wait;
+    private final WebDriver driver;
+    private final WebDriverWait wait;
 
-    //Локатор формы авторизации
-    private By formAuth = By.className("auth-form");
+    // Локаторы
+    private static final By FORM_AUTH = By.className("auth-form");
+    private static final By FIELD_LOGIN = By.id("username");
+    private static final By FIELD_PASSWORD = By.id("password");
+    private static final By BUTTON_AUTH = By.className("auth-button");
+    private static final By BUTTON_REGISTRATION = By.xpath("//a[@href='/register']");
 
-    //Локатор поля логин
-    private By fieldLogin = By.id("username");
-
-    //Локатор поля пароль
-    private By fieldPassword = By.id("password");
-
-    //Локатор кнопки "Войти"
-    private By buttonAuth = By.className("auth-button");
-
-    //Локатор кнопки "Регистрация
-    private By buttonPageRegistration = By.xpath("//a[@href='/register']");
+    // Таймаут по умолчанию
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
 
     public PageAuth(WebDriver driver) {
-        this.driver=driver;
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, DEFAULT_TIMEOUT);
     }
 
-
-    //Вспомогательный метод клика
-    public void click(By locator) {
-        driver.findElement(locator).click();
+    // Вспомогательный метод клика с ожиданием
+    private void click(By locator) {
+        wait.until(ExpectedConditions.elementToBeClickable(locator)).click();
     }
 
-    //Вспомогательный метод ввода
-    public void sendKeys(By locator, String keys) {
-        driver.findElement(locator).sendKeys(keys);
+    // Вспомогательный метод ввода с ожиданием
+    private void sendKeys(By locator, String keys) {
+        WebElement element = wait.until(ExpectedConditions.elementToBeClickable(locator));
+        element.clear();
+        element.sendKeys(keys);
     }
 
-    //Вспомогательный метод ожидания видимости элемента
-    private WebElement waitingUntilVisible(By locator) {
+    // Вспомогательный метод ожидания видимости элемента
+    private WebElement waitForElementVisible(By locator) {
         return wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
     }
 
-    //Метод клика по полю Логин
+    // Метод клика по полю Логин
     public void clickFieldLogin() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-        wait.until(ExpectedConditions.visibilityOfElementLocated(formAuth));
-        click(fieldLogin);
+        waitForElementVisible(FORM_AUTH);
+        click(FIELD_LOGIN);
     }
 
-    //Метод ввода в поле Логин
+    // Метод ввода в поле Логин
     public void sendFieldLogin(String login) {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-        wait.until(ExpectedConditions.elementToBeClickable(fieldLogin));
-        sendKeys(fieldLogin, login);
+        sendKeys(FIELD_LOGIN, login);
     }
 
-    //Метод клика по полю Пароль
+    // Метод клика по полю Пароль
     public void clickFieldPassword() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-        wait.until(ExpectedConditions.visibilityOfElementLocated(formAuth));
-        click(fieldPassword);
+        waitForElementVisible(FORM_AUTH);
+        click(FIELD_PASSWORD);
     }
 
-    //Метод ввода пароля в поле пароль
+    // Метод ввода пароля в поле пароль
     public void sendFieldPassword(String password) {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-        wait.until(ExpectedConditions.elementToBeClickable(fieldPassword));
-        sendKeys(fieldPassword, password);
+        sendKeys(FIELD_PASSWORD, password);
     }
 
     // Метод клика по кнопке "Войти"
     public void clickButtonAuth() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
-        waitingUntilVisible(buttonAuth);
-        click(buttonAuth);
+        waitForElementVisible(BUTTON_AUTH);
+        click(BUTTON_AUTH);
     }
 
-    //Метод клика по кнопке "Регистрация"
-    public void clickButtonRegistration(){
-        WebDriverWait wait = new WebDriverWait(driver,Duration.ofSeconds(3));
-        waitingUntilVisible(buttonPageRegistration);
-        click(buttonPageRegistration);
+    // Метод клика по кнопке "Регистрация"
+    public void clickButtonRegistration() {
+        waitForElementVisible(BUTTON_REGISTRATION);
+        click(BUTTON_REGISTRATION);
+    }
+
+    // Проверка видимости формы авторизации
+    public boolean isAuthFormVisible() {
+        try {
+            waitForElementVisible(FORM_AUTH);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Проверка видимости поля логин
+    public boolean isLoginFieldVisible() {
+        try {
+            waitForElementVisible(FIELD_LOGIN);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
 
