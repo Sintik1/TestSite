@@ -164,22 +164,22 @@ pipeline {
                     echo "Error reading test results: ${e.getMessage()}"
                 }
                 
-                // Формируем сообщение
+                // Формируем сообщение (используем простой текст без Markdown для надежности)
                 def emoji = status == 'SUCCESS' ? '✅' : '❌'
                 def statusText = status == 'SUCCESS' ? 'Успешно' : 'Провалено'
                 def message = """
-${emoji} *${jobName}* - Build #${buildNumber}
+${emoji} ${jobName} - Build #${buildNumber}
 
-*Статус:* ${statusText}
+Статус: ${statusText}
 
-*Результаты тестов:*
+Результаты тестов:
 • Всего: ${testResults.total}
 • Успешно: ${testResults.passed}
 • Провалено: ${testResults.failed}
 • Ошибки: ${testResults.errors}
 • Пропущено: ${testResults.skipped}
 
-*Информация:*
+Информация:
 • Ветка: ${gitBranch}
 • Коммит: ${gitCommit.take(7)}
 • Ссылка: ${buildUrl}
@@ -195,16 +195,16 @@ ${emoji} *${jobName}* - Build #${buildNumber}
                         def chatId = env.TELEGRAM_CHAT_ID
                         def telegramUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
                         
-                        // Сохраняем сообщение в файл для безопасной передачи
+                        // Сохраняем сообщение в файл
                         writeFile file: 'telegram_message.txt', text: message
                         
-                        // Отправляем через curl с правильным экранированием
+                        // Отправляем через curl с правильным синтаксисом для чтения файла
+                        // Используем простой текст без parse_mode для избежания ошибок парсинга
                         sh """
                             curl -s -X POST "${telegramUrl}" \\
-                                --data-urlencode "chat_id=${chatId}" \\
-                                --data-urlencode "text=@telegram_message.txt" \\
-                                --data-urlencode "parse_mode=Markdown" \\
-                                --data-urlencode "disable_web_page_preview=true" || echo "Failed to send Telegram notification"
+                                -d "chat_id=${chatId}" \\
+                                --data-urlencode "text@telegram_message.txt" \\
+                                -d "disable_web_page_preview=true" || echo "Failed to send Telegram notification"
                         """
                         
                         sh 'rm -f telegram_message.txt'
