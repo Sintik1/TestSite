@@ -9,7 +9,7 @@ pipeline {
         // Telegram Bot настройки (можно задать через Jenkins Credentials или переменные окружения)
         // Для использования credentials: credentials('telegram-bot-token')
         // Или напрямую: 'YOUR_BOT_TOKEN'
-        TELEGRAM_BOT_TOKEN = 'AAG6nR_3bkV6ZEjD2Mhu3AdVT0kVYZsxsE0'
+        TELEGRAM_BOT_TOKEN = '8263907755:AAG6nR_3bkV6ZEjD2Mhu3AdVT0kVYZsxsE0'
         TELEGRAM_CHAT_ID = '8263907755'
         
         // Email настройки
@@ -112,7 +112,57 @@ pipeline {
                 def gitBranch = env.GIT_BRANCH ?: 'N/A'
                 
                 // Читаем результаты тестов
-                def testResults = readTestResults()
+                def testResults = [total: 0, failed: 0, skipped: 0, errors: 0, passed: 0]
+                try {
+                    def reportFiles = sh(
+                        script: 'find target/surefire-reports -name "*.xml" -type f 2>/dev/null || echo ""',
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (reportFiles && !reportFiles.isEmpty()) {
+                        def testsTotal = 0
+                        def testsFailed = 0
+                        def testsSkipped = 0
+                        def testsErrors = 0
+                        
+                        reportFiles.split('\n').each { file ->
+                            if (file && file.trim()) {
+                                try {
+                                    def content = readFile(file: file.trim())
+                                    def totalMatch = (content =~ /tests="(\d+)"/)
+                                    def failedMatch = (content =~ /failures="(\d+)"/)
+                                    def skippedMatch = (content =~ /skipped="(\d+)"/)
+                                    def errorsMatch = (content =~ /errors="(\d+)"/)
+                                    
+                                    if (totalMatch) {
+                                        testsTotal += totalMatch[0][1].toInteger()
+                                    }
+                                    if (failedMatch) {
+                                        testsFailed += failedMatch[0][1].toInteger()
+                                    }
+                                    if (skippedMatch) {
+                                        testsSkipped += skippedMatch[0][1].toInteger()
+                                    }
+                                    if (errorsMatch) {
+                                        testsErrors += errorsMatch[0][1].toInteger()
+                                    }
+                                } catch (Exception e) {
+                                    echo "Error reading file ${file}: ${e.getMessage()}"
+                                }
+                            }
+                        }
+                        
+                        testResults = [
+                            total: testsTotal,
+                            failed: testsFailed,
+                            skipped: testsSkipped,
+                            errors: testsErrors,
+                            passed: testsTotal - testsFailed - testsSkipped - testsErrors
+                        ]
+                    }
+                } catch (Exception e) {
+                    echo "Error reading test results: ${e.getMessage()}"
+                }
                 
                 // Формируем сообщение
                 def emoji = status == 'SUCCESS' ? '✅' : '❌'
@@ -140,14 +190,63 @@ ${emoji} *${jobName}* - Build #${buildNumber}
                 // Отправка в Telegram
                 if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID && 
                     !env.TELEGRAM_BOT_TOKEN.isEmpty() && !env.TELEGRAM_CHAT_ID.isEmpty()) {
-                    sendTelegramNotification(message)
+                    try {
+                        def botToken = env.TELEGRAM_BOT_TOKEN
+                        def chatId = env.TELEGRAM_CHAT_ID
+                        def telegramUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
+                        
+                        // Сохраняем сообщение в файл для безопасной передачи
+                        writeFile file: 'telegram_message.txt', text: message
+                        
+                        // Отправляем через curl с правильным экранированием
+                        sh """
+                            curl -s -X POST "${telegramUrl}" \\
+                                --data-urlencode "chat_id=${chatId}" \\
+                                --data-urlencode "text=@telegram_message.txt" \\
+                                --data-urlencode "parse_mode=Markdown" \\
+                                --data-urlencode "disable_web_page_preview=true" || echo "Failed to send Telegram notification"
+                        """
+                        
+                        sh 'rm -f telegram_message.txt'
+                        echo '✅ Telegram notification sent'
+                    } catch (Exception e) {
+                        echo "❌ Error sending Telegram notification: ${e.getMessage()}"
+                    }
                 } else {
                     echo '⚠️ Telegram credentials not configured. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID.'
                 }
                 
                 // Отправка Email
                 if (env.EMAIL_TO && !env.EMAIL_TO.isEmpty()) {
-                    sendEmailNotification(message, status, subject: "[${status}] ${jobName} - Build #${buildNumber}")
+                    try {
+                        def emailTo = env.EMAIL_TO
+                        def emailFrom = env.EMAIL_FROM ?: 'jenkins@example.com'
+                        def subject = "[${status}] ${jobName} - Build #${buildNumber}"
+                        
+                        writeFile file: 'email_message.txt', text: message
+                        
+                        sh """
+                            if command -v mail &> /dev/null; then
+                                mail -s "${subject}" -r "${emailFrom}" "${emailTo}" < email_message.txt || echo "Mail command failed"
+                            elif command -v sendmail &> /dev/null; then
+                                (
+                                    echo "To: ${emailTo}"
+                                    echo "From: ${emailFrom}"
+                                    echo "Subject: ${subject}"
+                                    echo "Content-Type: text/plain; charset=UTF-8"
+                                    echo ""
+                                    cat email_message.txt
+                                ) | sendmail "${emailTo}" || echo "Sendmail failed"
+                            else
+                                echo "No mail command available. Install mailutils or sendmail for email notifications."
+                            fi
+                        """
+                        
+                        sh 'rm -f email_message.txt'
+                        echo '✅ Email notification sent'
+                    } catch (Exception e) {
+                        echo "❌ Error sending email notification: ${e.getMessage()}"
+                    }
                 } else {
                     echo '⚠️ Email not configured. Set EMAIL_TO environment variable.'
                 }
@@ -159,134 +258,5 @@ ${emoji} *${jobName}* - Build #${buildNumber}
         failure {
             echo '❌ Pipeline failed. Check logs above.'
         }
-    }
-}
-
-/**
- * Читает результаты тестов из surefire-reports
- */
-def readTestResults() {
-    def results = [total: 0, failed: 0, skipped: 0, errors: 0, passed: 0]
-    
-    try {
-        def reportFiles = sh(
-            script: 'find target/surefire-reports -name "*.xml" -type f 2>/dev/null || echo ""',
-            returnStdout: true
-        ).trim()
-        
-        if (reportFiles && !reportFiles.isEmpty()) {
-            def testsTotal = 0
-            def testsFailed = 0
-            def testsSkipped = 0
-            def testsErrors = 0
-            
-            reportFiles.split('\n').each { file ->
-                if (file && file.trim()) {
-                    try {
-                        def content = readFile(file: file.trim())
-                        def totalMatch = (content =~ /tests="(\d+)"/)
-                        def failedMatch = (content =~ /failures="(\d+)"/)
-                        def skippedMatch = (content =~ /skipped="(\d+)"/)
-                        def errorsMatch = (content =~ /errors="(\d+)"/)
-                        
-                        if (totalMatch) {
-                            testsTotal += totalMatch[0][1].toInteger()
-                        }
-                        if (failedMatch) {
-                            testsFailed += failedMatch[0][1].toInteger()
-                        }
-                        if (skippedMatch) {
-                            testsSkipped += skippedMatch[0][1].toInteger()
-                        }
-                        if (errorsMatch) {
-                            testsErrors += errorsMatch[0][1].toInteger()
-                        }
-                    } catch (Exception e) {
-                        echo "Error reading file ${file}: ${e.getMessage()}"
-                    }
-                }
-            }
-            
-            results = [
-                total: testsTotal,
-                failed: testsFailed,
-                skipped: testsSkipped,
-                errors: testsErrors,
-                passed: testsTotal - testsFailed - testsSkipped - testsErrors
-            ]
-        }
-    } catch (Exception e) {
-        echo "Error reading test results: ${e.getMessage()}"
-    }
-    
-    return results
-}
-
-/**
- * Отправляет уведомление в Telegram
- */
-def sendTelegramNotification(String message) {
-    try {
-        def botToken = env.TELEGRAM_BOT_TOKEN
-        def chatId = env.TELEGRAM_CHAT_ID
-        
-        // Используем curl для отправки сообщения
-        def telegramUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
-        
-        // Создаем временный файл для сообщения (избегаем проблем с экранированием)
-        writeFile file: 'telegram_message.txt', text: message
-        
-        sh """
-            curl -s -X POST "${telegramUrl}" \\
-                -F "chat_id=${chatId}" \\
-                -F "text=@telegram_message.txt" \\
-                -F "parse_mode=Markdown" \\
-                -F "disable_web_page_preview=true" || echo "Failed to send Telegram notification"
-        """
-        
-        // Удаляем временный файл
-        sh 'rm -f telegram_message.txt'
-        
-        echo '✅ Telegram notification sent'
-    } catch (Exception e) {
-        echo "❌ Error sending Telegram notification: ${e.getMessage()}"
-    }
-}
-
-/**
- * Отправляет уведомление на Email
- */
-def sendEmailNotification(String message, String status, Map params = [:]) {
-    try {
-        def emailTo = env.EMAIL_TO
-        def emailFrom = env.EMAIL_FROM ?: 'jenkins@example.com'
-        def subject = params.subject ?: "[${status}] ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}"
-        
-        // Создаем временный файл для email
-        writeFile file: 'email_message.txt', text: message
-        
-        sh """
-            if command -v mail &> /dev/null; then
-                mail -s "${subject}" -r "${emailFrom}" "${emailTo}" < email_message.txt || echo "Mail command failed"
-            elif command -v sendmail &> /dev/null; then
-                (
-                    echo "To: ${emailTo}"
-                    echo "From: ${emailFrom}"
-                    echo "Subject: ${subject}"
-                    echo "Content-Type: text/plain; charset=UTF-8"
-                    echo ""
-                    cat email_message.txt
-                ) | sendmail "${emailTo}" || echo "Sendmail failed"
-            else
-                echo "No mail command available. Install mailutils or sendmail for email notifications."
-            fi
-        """
-        
-        // Удаляем временный файл
-        sh 'rm -f email_message.txt'
-        
-        echo '✅ Email notification sent'
-    } catch (Exception e) {
-        echo "❌ Error sending email notification: ${e.getMessage()}"
     }
 }
