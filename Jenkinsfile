@@ -65,7 +65,11 @@ pipeline {
                             echo "Maven already available: $(mvn -version)"
                         fi
                         
+                        # Возвращаемся в корень проекта (где находится pom.xml)
+                        cd ${WORKSPACE}
+                        
                         # Запускаем тесты
+                        echo "Running tests from: $(pwd)"
                         mvn clean test
                     '''
                 }
