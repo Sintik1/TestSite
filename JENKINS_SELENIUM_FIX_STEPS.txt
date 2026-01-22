@@ -1,0 +1,102 @@
+Инструкция: исправление ошибки Selenium ChromeDriver (SessionNotCreated / exit 255) при запуске автотестов в Jenkins (Docker Desktop, ARM64)
+
+Проблема
+1) Jenkins запускается в контейнере (linux/arm64).
+2) Автотест пытается стартовать локальный ChromeDriver внутри контейнера Jenkins.
+3) В контейнере Jenkins нет полноценного Chrome/Chromium окружения => ChromeDriver падает (exit 255) и тесты валятся.
+
+Решение (правильный подход)
+Запускать браузер НЕ в Jenkins-контейнере, а в отдельном контейнере Selenium (Grid/Standalone) и подключаться к нему через RemoteWebDriver.
+
+--------------------------------------------------------------------------
+ШАГ 1. Добавить Selenium-контейнер в docker-compose
+Файл: docker-compose-microservices.yml
+
+В секции services добавьте сервис selenium (имя сервиса должно быть "selenium", чтобы URL был http://selenium:4444/...):
+
+  selenium:
+    image: seleniarm/standalone-chromium:120.0
+    container_name: goals-selenium
+    restart: unless-stopped
+    shm_size: 2g
+    ports:
+      - "4444:4444"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:4444/status"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - goals-network
+
+Почему именно этот image:
+- docker/selenium/standalone-chrome на ARM64 часто не имеет подходящего манифеста.
+- seleniarm/standalone-chromium предназначен для ARM64 (Mac M1/M2 + Docker Desktop).
+
+--------------------------------------------------------------------------
+ШАГ 2. Перезапустить docker-compose, чтобы selenium реально появился
+Из папки с compose-файлом выполните:
+
+  docker-compose -f docker-compose-microservices.yml pull selenium
+  docker-compose -f docker-compose-microservices.yml up -d selenium
+
+Проверка:
+  docker-compose -f docker-compose-microservices.yml ps | grep selenium
+
+Должен появиться контейнер goals-selenium со статусом Up.
+
+--------------------------------------------------------------------------
+ШАГ 3. Настроить Jenkins Freestyle job (свободная конфигурация)
+
+3.1) Прописать переменные окружения для тестов:
+Jenkins Job -> Configure -> Build Environment
+
+Вариант A (если есть пункт "Inject environment variables"):
+- Включите "Inject environment variables"
+- В поле "Properties Content" вставьте:
+
+SELENIUM_REMOTE_URL=http://selenium:4444/wd/hub
+BASE_URI=http://frontend-service:9090
+CI=true
+
+Вариант B (если пункта нет):
+- Установите плагин "EnvInject" (Manage Jenkins -> Plugins)
+- После установки появится "Inject environment variables"
+
+ВАЖНО про BASE_URI:
+- Внутри docker-сети нельзя ходить на localhost:9090 (это localhost контейнера Jenkins).
+- Нужно ходить по имени сервиса из compose:
+  http://frontend-service:9090
+
+3.2) Запуск Maven:
+Jenkins Job -> Configure -> Build Steps -> Invoke top-level Maven targets
+- Goals: test
+
+--------------------------------------------------------------------------
+ШАГ 4. Проверить, что тест действительно использует RemoteWebDriver
+В консоли сборки Jenkins должно быть:
+  [Test] Using RemoteWebDriver: http://selenium:4444/wd/hub
+
+Если вместо этого видно:
+  [Test] Using local ChromeDriver
+значит переменная SELENIUM_REMOTE_URL не передалась в job.
+
+--------------------------------------------------------------------------
+ШАГ 5. (Если всё равно проблемы) Быстрые проверки
+1) Доступность Selenium из Jenkins контейнера:
+   - убедитесь, что оба сервиса в одной сети goals-network
+   - в Jenkins-контейнере имя "selenium" должно резолвиться
+2) Доступность приложения по BASE_URI:
+   - URL должен открываться из сети контейнеров (frontend-service:9090)
+
+--------------------------------------------------------------------------
+Что изменено в тестах (код)
+1) Тест умеет брать:
+   - SELENIUM_REMOTE_URL -> RemoteWebDriver
+   - иначе (локально) ChromeDriver
+2) Для CI включены стабильные ChromeOptions: headless/new, disable-dev-shm-usage, window-size и т.д.
+3) BASE_URI можно переопределить:
+   - env BASE_URI
+   - или -DbaseUri=...
+
