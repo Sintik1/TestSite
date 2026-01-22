@@ -13,7 +13,7 @@ pipeline {
         
         //Для GitHub:
         githubPush()
-        
+        pollSCM('H/5 * * * *')
         // Для GitLab:
         // gitlab(triggerOnPush: true, triggerOnMergeRequest: true)
         
