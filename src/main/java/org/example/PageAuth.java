@@ -22,7 +22,7 @@ public class PageAuth {
     private static final By FIELD_PASSWORD = By.id("password");
     private static final By BUTTON_AUTH = By.className("auth-button");
     private static final By BUTTON_REGISTRATION = By.xpath("//a[@href='/register']");
-
+    private static final By ERROR_AUTHORIZATION = By.className("error-message");
     // Таймаут по умолчанию
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
 
@@ -52,34 +52,40 @@ public class PageAuth {
     public void clickFieldLogin() {
         waitForElementVisible(FORM_AUTH);
         click(FIELD_LOGIN);
+        return this;
     }
 
     // Метод ввода в поле Логин
     public void sendFieldLogin(String login) {
         sendKeys(FIELD_LOGIN, login);
+        return this;
     }
 
     // Метод клика по полю Пароль
     public void clickFieldPassword() {
         waitForElementVisible(FORM_AUTH);
         click(FIELD_PASSWORD);
+        return this;
     }
 
     // Метод ввода пароля в поле пароль
     public void sendFieldPassword(String password) {
-        sendKeys(FIELD_PASSWORD, password);
+        sendKeys(FIELD_PASSWORD, password); 
+        return this;
     }
 
     // Метод клика по кнопке "Войти"
     public void clickButtonAuth() {
         waitForElementVisible(BUTTON_AUTH);
         click(BUTTON_AUTH);
+        return this;
     }
 
     // Метод клика по кнопке "Регистрация"
     public void clickButtonRegistration() {
         waitForElementVisible(BUTTON_REGISTRATION);
         click(BUTTON_REGISTRATION);
+        return this;
     }
 
     // Проверка видимости формы авторизации
@@ -101,6 +107,15 @@ public class PageAuth {
             return false;
         }
     }
+//Метод получения текста ошибки при авторизации
+    public String getTextError(){
+        try
+            WebElement element = waitForElementVisible(ERROR_AUTHORIZATION);
+            String actualText = element.getText();
+            return actualText;
+        } catch (Exception e) {
+            return e.getMessage();
+        }
 }
 
 
