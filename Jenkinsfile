@@ -198,17 +198,28 @@ ${emoji} ${jobName} - Build #${buildNumber}
                         // Сохраняем сообщение в файл
                         writeFile file: 'telegram_message.txt', text: message
                         
-                        // Отправляем через curl с правильным синтаксисом для чтения файла
-                        // Используем простой текст без parse_mode для избежания ошибок парсинга
-                        sh """
-                            curl -s -X POST "${telegramUrl}" \\
-                                -d "chat_id=${chatId}" \\
-                                --data-urlencode "text@telegram_message.txt" \\
-                                -d "disable_web_page_preview=true" || echo "Failed to send Telegram notification"
-                        """
+                        // Отправляем через curl
+                        def response = sh(
+                            script: """
+                                curl -s -X POST "${telegramUrl}" \\
+                                    -d "chat_id=${chatId}" \\
+                                    --data-urlencode "text@telegram_message.txt" \\
+                                    -d "disable_web_page_preview=true"
+                            """,
+                            returnStdout: true
+                        ).trim()
                         
                         sh 'rm -f telegram_message.txt'
-                        echo '✅ Telegram notification sent'
+                        
+                        // Проверяем ответ от Telegram API
+                        if (response.contains('"ok":true')) {
+                            echo '✅ Telegram notification sent successfully'
+                        } else if (response.contains('"error_code":403')) {
+                            echo '❌ Telegram error: Chat ID is incorrect. Make sure you are using your USER Chat ID, not bot ID.'
+                            echo "Response: ${response}"
+                        } else {
+                            echo "⚠️ Telegram response: ${response}"
+                        }
                     } catch (Exception e) {
                         echo "❌ Error sending Telegram notification: ${e.getMessage()}"
                     }
@@ -216,36 +227,50 @@ ${emoji} ${jobName} - Build #${buildNumber}
                     echo '⚠️ Telegram credentials not configured. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID.'
                 }
                 
-                // Отправка Email
+                // Отправка Email через Jenkins Mail Plugin
                 if (env.EMAIL_TO && !env.EMAIL_TO.isEmpty()) {
                     try {
                         def emailTo = env.EMAIL_TO
                         def emailFrom = env.EMAIL_FROM ?: 'jenkins@example.com'
                         def subject = "[${status}] ${jobName} - Build #${buildNumber}"
                         
-                        writeFile file: 'email_message.txt', text: message
+                        // Используем встроенный Jenkins mail step
+                        mail(
+                            to: emailTo,
+                            from: emailFrom,
+                            subject: subject,
+                            body: message,
+                            mimeType: 'text/plain'
+                        )
                         
-                        sh """
-                            if command -v mail &> /dev/null; then
-                                mail -s "${subject}" -r "${emailFrom}" "${emailTo}" < email_message.txt || echo "Mail command failed"
-                            elif command -v sendmail &> /dev/null; then
-                                (
-                                    echo "To: ${emailTo}"
-                                    echo "From: ${emailFrom}"
-                                    echo "Subject: ${subject}"
-                                    echo "Content-Type: text/plain; charset=UTF-8"
-                                    echo ""
-                                    cat email_message.txt
-                                ) | sendmail "${emailTo}" || echo "Sendmail failed"
-                            else
-                                echo "No mail command available. Install mailutils or sendmail for email notifications."
-                            fi
-                        """
-                        
-                        sh 'rm -f email_message.txt'
-                        echo '✅ Email notification sent'
+                        echo '✅ Email notification sent via Jenkins Mail Plugin'
                     } catch (Exception e) {
                         echo "❌ Error sending email notification: ${e.getMessage()}"
+                        echo "💡 Tip: Configure SMTP in Jenkins (Manage Jenkins -> Configure System -> E-mail Notification)"
+                        
+                        // Fallback: пробуем через mail команду, если доступна
+                        try {
+                            writeFile file: 'email_message.txt', text: message
+                            sh """
+                                if command -v mail &> /dev/null; then
+                                    mail -s "${subject}" -r "${emailFrom}" "${emailTo}" < email_message.txt || echo "Mail command failed"
+                                elif command -v sendmail &> /dev/null; then
+                                    (
+                                        echo "To: ${emailTo}"
+                                        echo "From: ${emailFrom}"
+                                        echo "Subject: ${subject}"
+                                        echo "Content-Type: text/plain; charset=UTF-8"
+                                        echo ""
+                                        cat email_message.txt
+                                    ) | sendmail "${emailTo}" || echo "Sendmail failed"
+                                else
+                                    echo "No mail command available. Install mailutils or configure Jenkins SMTP."
+                                fi
+                            """
+                            sh 'rm -f email_message.txt'
+                        } catch (Exception e2) {
+                            echo "Fallback email method also failed: ${e2.getMessage()}"
+                        }
                     }
                 } else {
                     echo '⚠️ Email not configured. Set EMAIL_TO environment variable.'
