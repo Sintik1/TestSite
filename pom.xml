@@ -81,12 +81,9 @@
                     <source>21</source>
                     <target>21</target>
                     <encoding>UTF-8</encoding>
-                    <!-- Исключаем примеры файлов из компиляции -->
-                    <excludes>
-                        <exclude>**/*_IMPROVED.java</exclude>
-                    </excludes>
                 </configuration>
             </plugin>
+            
             
             <!-- Maven Surefire Plugin (для запуска тестов) -->
             <plugin>
