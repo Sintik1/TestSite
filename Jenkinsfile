@@ -32,7 +32,20 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running Maven tests...'
-                sh 'mvn clean test'
+                script {
+                    // Используем Maven через Docker, так как в Jenkins контейнере нет Maven
+                    sh '''
+                        docker run --rm \
+                            -v ${WORKSPACE}:/workspace \
+                            -w /workspace \
+                            -e SELENIUM_REMOTE_URL=${SELENIUM_REMOTE_URL} \
+                            -e BASE_URI=${BASE_URI} \
+                            -e CI=${CI} \
+                            --network goals-network \
+                            maven:3.9-eclipse-temurin-21 \
+                            mvn clean test
+                    '''
+                }
             }
             post {
                 always {
