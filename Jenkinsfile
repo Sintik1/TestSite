@@ -17,8 +17,8 @@ pipeline {
         // Для GitLab:
         // gitlab(triggerOnPush: true, triggerOnMergeRequest: true)
         
-        // ИЛИ по расписанию (каждый день в 2:00 ночи)
-        cron('H 2 * * *')
+        // ИЛИ по расписанию (каждый день в 11:00 утра)
+        cron('H 11 * * *')
     }
     
     stages {
