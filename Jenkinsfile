@@ -31,19 +31,32 @@ pipeline {
         
         stage('Test') {
             steps {
-                echo 'Running Maven tests...'
+                echo 'Setting up Maven and running tests...'
                 script {
-                    // Используем Maven через Docker, так как в Jenkins контейнере нет Maven
                     sh '''
-                        docker run --rm \
-                            -v ${WORKSPACE}:/workspace \
-                            -w /workspace \
-                            -e SELENIUM_REMOTE_URL=${SELENIUM_REMOTE_URL} \
-                            -e BASE_URI=${BASE_URI} \
-                            -e CI=${CI} \
-                            --network goals-network \
-                            maven:3.9-eclipse-temurin-21 \
-                            mvn clean test
+                        # Устанавливаем Maven, если его нет
+                        if ! command -v mvn &> /dev/null; then
+                            echo "Downloading Maven..."
+                            MAVEN_VERSION=3.9.9
+                            MAVEN_DIR=${WORKSPACE}/.maven
+                            MAVEN_HOME=${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}
+                            
+                            if [ ! -d "${MAVEN_HOME}" ]; then
+                                mkdir -p ${MAVEN_DIR}
+                                cd ${MAVEN_DIR}
+                                wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+                                tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz
+                                rm apache-maven-${MAVEN_VERSION}-bin.tar.gz
+                            fi
+                            
+                            export PATH=${MAVEN_HOME}/bin:${PATH}
+                            echo "Maven installed: $(mvn -version)"
+                        else
+                            echo "Maven already available: $(mvn -version)"
+                        fi
+                        
+                        # Запускаем тесты
+                        mvn clean test
                     '''
                 }
             }
