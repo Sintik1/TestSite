@@ -1,5 +1,6 @@
-package org.example;
 
+import org.example.HeadPage;
+import org.example.PageAuth;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -22,6 +23,8 @@ public class PageAuthorizationTest extends BaseTest {
     @Test
     public void successAuthorization() {
         PageAuth pageAuth = new PageAuth(driver);
+        HeadPage headPage = new HeadPage(driver);
+
 
         // Выполняем действия авторизации
         pageAuth.clickFieldLogin();
@@ -30,12 +33,11 @@ public class PageAuthorizationTest extends BaseTest {
         pageAuth.sendFieldPassword(VALID_PASSWORD);
         pageAuth.clickButtonAuth();
 
-        // Assertions: проверяем результат
-        // ВАЖНО: После успешной авторизации форма должна исчезнуть или появиться новый элемент
-        // Если форма авторизации все еще видна - авторизация не прошла
-        // TODO: Замените на проверку реального элемента, который появляется после успешной авторизации
-        // Например: проверка наличия элемента dashboard, user menu и т.д.
-        
+        //проверяем что Главная страница отобразилась
+        Assert.assertTrue("Авторизация прошла не успешно, возникла ошибка", headPage.verifyVisibleTableGoals());
+
+
+
         // Временная проверка: убеждаемся, что драйвер работает и страница загрузилась
         Assert.assertNotNull("Driver should be initialized", driver);
         Assert.assertNotNull("Page title should not be null", driver.getTitle());
