@@ -44,8 +44,4 @@ public class HeadPageTest extends BaseTest {
                 .deleteBlock();
         Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsVisible());
     }
-
-
-
-
 }
