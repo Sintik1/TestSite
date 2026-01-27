@@ -15,6 +15,15 @@ pipeline {
         // Email настройки
         EMAIL_TO = 'vsentyakov@yandex.ru'
         EMAIL_FROM = 'jenkins@example.com'
+        
+        // Database настройки для проверки БД в тестах
+        // Можно переопределить через Jenkins Credentials или переменные окружения
+        DB_URL = 'jdbc:postgresql://postgres:5432/goals_db'
+        DB_USER = 'postgres'
+        DB_PASSWORD = 'postgres'
+        DB_TABLE = 'categories'
+        DB_NAME_COLUMN = 'name'
+        DB_ID_COLUMN = 'id'
     }
     
     triggers {

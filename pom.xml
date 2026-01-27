@@ -19,6 +19,7 @@
         <webdrivermanager.version>5.9.2</webdrivermanager.version>
         <log4j.version>2.23.1</log4j.version>
         <slf4j.version>2.0.13</slf4j.version>
+        <postgresql.version>42.7.3</postgresql.version>
     </properties>
     
     <dependencies>
@@ -67,6 +68,14 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
             <version>${log4j.version}</version>
+        </dependency>
+        
+        <!-- PostgreSQL JDBC Driver (для проверки БД в тестах) -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     
