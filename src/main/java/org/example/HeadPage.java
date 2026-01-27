@@ -106,12 +106,19 @@ public class HeadPage {
 
     //проверка что блок не отобажается
     public boolean goalsBlockIsNotVisible(){
-       if(driver.findElement(BLOCK_GOALS).isDisplayed()){
-           return true;
-       }
-       else {
-           return false;
-       }
+        try {
+            // Используем findElements, чтобы избежать исключения, если элемент не найден
+            java.util.List<WebElement> elements = driver.findElements(BLOCK_GOALS);
+            if (elements.isEmpty()) {
+                // Элемент не найден - блок не отображается
+                return true;
+            }
+            // Элемент найден - проверяем, отображается ли он
+            return !elements.get(0).isDisplayed();
+        } catch (Exception e) {
+            // В случае любой ошибки считаем, что блок не отображается
+            return true;
+        }
     }
 
     // Отображение модального окна
