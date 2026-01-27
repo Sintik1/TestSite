@@ -28,7 +28,7 @@ public class HeadPage {
     private static final By BUTTON_LOGOUT = By.className("logout-button");
     private static final By FIELD_NAME_BLOCK = By.id("category-name");
     private static final By TABLE_GOALS = By.className("goals-table");
-    private static final By DELETE_BLOCK = By.className("category-delete-x-button");
+    private static final By DELETE_BLOCK = By.xpath("//button[contains(@class, 'category-delete-x-button') and normalize-space()='×']");
     private static final By BLOCK_GOALS = By.xpath("//a[@href='/categories/1']");
 
 
