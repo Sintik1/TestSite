@@ -35,7 +35,7 @@ public class HeadPageTest extends BaseTest {
                 .login(VALID_LOGIN,VALID_PASSWORD)
                 .clickButtonAddBlock();
 
-        Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsVisible());
+        Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsNotVisible());
     }
     //Удаление блока
     @Test
@@ -45,6 +45,6 @@ public class HeadPageTest extends BaseTest {
                 .sendNameBlock(NAME_BLOCK)
                 .clickButtonAddBlock()
                 .deleteBlock();
-        Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsVisible());
+        Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsNotVisible());
     }
 }

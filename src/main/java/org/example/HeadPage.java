@@ -4,6 +4,7 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -102,6 +103,17 @@ public class HeadPage {
         waitForInVisible(BLOCK_GOALS);
         return true;
     }
+
+    //проверка что блок не отобажается
+    public boolean goalsBlockIsNotVisible(){
+       if(driver.findElement(BLOCK_GOALS).isDisplayed()){
+           return true;
+       }
+       else {
+           return false;
+       }
+    }
+
     // Отображение модального окна
     public boolean setWindowInList(String selectorChildWindow) {
         //Записали индентификатор главного окна
@@ -130,7 +142,12 @@ public class HeadPage {
     }
     //Удаление блока цели
     public HeadPage deleteBlock() {
-        waitForInVisible(DELETE_BLOCK).click();
+        WebElement blockElement = waitForInVisible(BLOCK_GOALS);
+        // Пробуем навести на блок, чтобы кнопка удаления появилась (если она скрыта до наведения)
+        Actions actions = new Actions(driver);
+        actions.moveToElement(blockElement).perform();
+        // Ждем появления и кликабельности кнопки удаления
+        waitForClicableElement(DELETE_BLOCK).click();
         Alert alert = driver.switchTo().alert();
         alert.accept();
         return this;
