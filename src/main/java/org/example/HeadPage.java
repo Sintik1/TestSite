@@ -1,5 +1,6 @@
 package org.example;
 
+import org.openqa.selenium.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -7,6 +8,11 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.Iterator;
+import java.util.Set;
+
+import static org.apache.commons.exec.util.DebugUtils.handleException;
+
 
 public class HeadPage {
 
@@ -83,12 +89,7 @@ public class HeadPage {
                 .sendNameBlock(name);
         return  this;
     }
-    //Метод удаления блока
-    public HeadPage deleteBlock(){
-        waitForInVisible(DELETE_BLOCK);
-        waitForClicableElement(DELETE_BLOCK).click();
-        return this;
-    }
+
     //Метод выхода из Учетной записи
     public HeadPage logout(){
         waitForInVisible(BUTTON_LOGOUT);
@@ -100,6 +101,39 @@ public class HeadPage {
     public boolean goalsBlockIsVisible(){
         waitForInVisible(BLOCK_GOALS);
         return true;
+    }
+    // Отображение модального окна
+    public boolean setWindowInList(String selectorChildWindow) {
+        //Записали индентификатор главного окна
+        String mainWindowHandle = driver.getWindowHandle();
+        //Записали идентификаторы всех окон включая дочерние
+        Set<String> allWindowHandles = driver.getWindowHandles();
+        //Cоздаем итератор для перебора всех окон
+        Iterator<String> iterator = allWindowHandles.iterator();
+
+        // Здесь мы проверим, есть ли у дочернего окна другие дочерние окна, и проверим отображение  дочернего окна
+        while (iterator.hasNext()) {
+            String childWindow = iterator.next();
+            if (!mainWindowHandle.equalsIgnoreCase(childWindow)) {
+                driver.switchTo().window(childWindow);
+                WebDriverWait wait = new WebDriverWait(driver, DEAFAULT_TIMEOUT);
+                try {
+                    WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(selectorChildWindow)));
+                    return element.isDisplayed();
+                } catch (Exception e) {
+                    handleException("Ошибка",e);
+                }
+            }
+        }
+        //если окно не содержит элемент
+        return false;
+    }
+    //Удаление блока цели
+    public HeadPage deleteBlock() {
+        waitForInVisible(DELETE_BLOCK).click();
+        Alert alert = driver.switchTo().alert();
+        alert.accept();
+        return this;
     }
 
 }

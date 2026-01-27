@@ -28,4 +28,24 @@ public class HeadPageTest extends BaseTest {
 
         Assert.assertTrue("Цель не создана", headPage.goalsBlockIsVisible());
     }
+    // Создание блока без названия
+    @Test
+    public void createBlockNotName(){
+        headPage
+                .login(VALID_LOGIN,VALID_PASSWORD)
+                .clickButtonAddBlock();
+
+        Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsVisible());
+    }
+    //Удаление блока
+    @Test
+    public void deleteBlock(){
+        headPage
+                .deleteBlock();
+        Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsVisible());
+    }
+
+
+
+
 }
