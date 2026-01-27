@@ -41,6 +41,9 @@ public class HeadPageTest extends BaseTest {
     @Test
     public void deleteBlock(){
         headPage
+                .login(VALID_LOGIN, VALID_PASSWORD)
+                .sendNameBlock(NAME_BLOCK)
+                .clickButtonAddBlock()
                 .deleteBlock();
         Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsVisible());
     }
