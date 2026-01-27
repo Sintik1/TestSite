@@ -1,5 +1,4 @@
 import org.example.HeadPage;
-import org.example.PageAuth;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +34,7 @@ public class HeadPageTest extends BaseTest {
                 .login(VALID_LOGIN,VALID_PASSWORD)
                 .clickButtonAddBlock();
 
-        Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsNotVisible());
+        Assert.assertTrue("Блок отобразился", headPage.goalsBlockIsNotVisible());
     }
     //Удаление блока
     @Test
@@ -45,6 +44,6 @@ public class HeadPageTest extends BaseTest {
                 .sendNameBlock(NAME_BLOCK)
                 .clickButtonAddBlock()
                 .deleteBlock();
-        Assert.assertFalse("Блок отобразился", headPage.goalsBlockIsNotVisible());
+        Assert.assertTrue("Блок отобразился", headPage.goalsBlockIsNotVisible());
     }
 }
