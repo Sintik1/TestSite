@@ -30,13 +30,12 @@ public class HeadPage {
     private static final By FIELD_NAME_BLOCK = By.id("category-name");
     private static final By TABLE_GOALS = By.className("goals-table");
     private static final By DELETE_BLOCK = By.xpath("//button[contains(@class, 'category-delete-x-button') and normalize-space()='×']");
-    private static final By BLOCK_GOALS = By.xpath("//a[h3='test']");
 
 
     //Таймаут по умолчанию
     private static final Duration DEAFAULT_TIMEOUT = Duration.ofSeconds(10);
 
-//Создаем конструктор класса
+    //Создаем конструктор класса
     public HeadPage(WebDriver driver) {
         this.driver = driver;
         this.wait =  new WebDriverWait(driver,DEAFAULT_TIMEOUT);
@@ -64,7 +63,7 @@ public class HeadPage {
         return this;
     }
 
-        //Метод проверки что таблица целей видна
+    //Метод проверки что таблица целей видна
     public boolean verifyVisibleTableGoals(){
         waitForInVisible(TABLE_GOALS);
         return true;
@@ -99,16 +98,16 @@ public class HeadPage {
     }
 
     //метод отображения блока Цели
-    public boolean goalsBlockIsVisible(){
-        waitForInVisible(BLOCK_GOALS);
+    public boolean goalsBlockIsVisible(String blockName){
+        waitForInVisible(blockByName(blockName));
         return true;
     }
 
     //проверка что блок не отобажается
-    public boolean goalsBlockIsNotVisible(){
+    public boolean goalsBlockIsNotVisible(String blockName){
         try {
             // Используем findElements, чтобы избежать исключения, если элемент не найден
-            java.util.List<WebElement> elements = driver.findElements(BLOCK_GOALS);
+            java.util.List<WebElement> elements = driver.findElements(blockByName(blockName));
             if (elements.isEmpty()) {
                 // Элемент не найден - блок не отображается
                 return true;
@@ -148,8 +147,8 @@ public class HeadPage {
         return false;
     }
     //Удаление блока цели
-    public HeadPage deleteBlock() {
-        WebElement blockElement = waitForInVisible(BLOCK_GOALS);
+    public HeadPage deleteBlock(String blockName) {
+        WebElement blockElement = waitForInVisible(blockByName(blockName));
         // Пробуем навести на блок, чтобы кнопка удаления появилась (если она скрыта до наведения)
         Actions actions = new Actions(driver);
         actions.moveToElement(blockElement).perform();
@@ -158,6 +157,52 @@ public class HeadPage {
         Alert alert = driver.switchTo().alert();
         alert.accept();
         return this;
+    }
+
+    /**
+     * Быстрая проверка наличия блока без ожиданий.
+     */
+    public boolean isBlockPresent(String blockName) {
+        try {
+            return !driver.findElements(blockByName(blockName)).isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private By blockByName(String blockName) {
+        // Ищем ссылку, внутри которой заголовок h3 ровно равен имени блока
+        return By.xpath("//a[h3=normalize-space()=" + toXpathString(blockName) + "]");
+    }
+
+    /**
+     * Безопасное экранирование строки для XPath литерала.
+     */
+    private static String toXpathString(String value) {
+        if (value == null) {
+            return "''";
+        }
+        if (!value.contains("'")) {
+            return "'" + value + "'";
+        }
+        if (!value.contains("\"")) {
+            return "\"" + value + "\"";
+        }
+        // Если есть и ' и ", используем concat('a',"'",'b')
+        StringBuilder sb = new StringBuilder("concat(");
+        char[] chars = value.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            String part;
+            if (chars[i] == '\'') {
+                part = "\"'\"";
+            } else {
+                part = "'" + chars[i] + "'";
+            }
+            if (i > 0) sb.append(",");
+            sb.append(part);
+        }
+        sb.append(")");
+        return sb.toString();
     }
 
 }
