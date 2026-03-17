@@ -77,9 +77,7 @@ public class HeadPageTest extends BaseTest {
         }
 
         // Создаем блок через UI
-        headPage
-                .sendNameBlock(NAME_BLOCK)
-                .clickButtonAddBlock();
+        headPage.addBlock(NAME_BLOCK);
 
         // Проверяем, что блок отображается в UI
         Assert.assertTrue("Цель не создана в UI", headPage.goalsBlockIsVisible(NAME_BLOCK));
@@ -105,9 +103,7 @@ public class HeadPageTest extends BaseTest {
     @Test
     public void deleteBlock(){
         // Создаем блок через UI
-        headPage
-                .sendNameBlock(NAME_BLOCK)
-                .clickButtonAddBlock();
+        headPage.addBlock(NAME_BLOCK);
 
         // Проверяем, что блок создан в UI
         Assert.assertTrue("Блок не создан в UI", headPage.goalsBlockIsVisible(NAME_BLOCK));

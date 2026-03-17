@@ -81,6 +81,20 @@ public class HeadPage {
         waitForClicableElement(FIELD_NAME_BLOCK).sendKeys(name);
         return this;
     }
+
+    /**
+     * Создание блока в устойчивом порядке действий.
+     * Во многих UI кнопка "Добавить" сначала открывает форму, а затем подтверждает создание.
+     */
+    public HeadPage addBlock(String name) {
+        // 1) Открыть форму/режим добавления
+        clickButtonAddBlock();
+        // 2) Ввести имя
+        sendNameBlock(name);
+        // 3) Подтвердить добавление (в зависимости от UI это может быть та же кнопка)
+        clickButtonAddBlock();
+        return this;
+    }
     // Метод создания блока
     public HeadPage createBlock(String name){
         HeadPage headPage = new HeadPage(driver);
@@ -99,7 +113,7 @@ public class HeadPage {
 
     //метод отображения блока Цели
     public boolean goalsBlockIsVisible(String blockName){
-        waitForInVisible(blockByName(blockName));
+        waitForInVisible(blockTitleByName(blockName));
         return true;
     }
 
@@ -107,7 +121,7 @@ public class HeadPage {
     public boolean goalsBlockIsNotVisible(String blockName){
         try {
             // Используем findElements, чтобы избежать исключения, если элемент не найден
-            java.util.List<WebElement> elements = driver.findElements(blockByName(blockName));
+            java.util.List<WebElement> elements = driver.findElements(blockTitleByName(blockName));
             if (elements.isEmpty()) {
                 // Элемент не найден - блок не отображается
                 return true;
@@ -148,14 +162,31 @@ public class HeadPage {
     }
     //Удаление блока цели
     public HeadPage deleteBlock(String blockName) {
-        WebElement blockElement = waitForInVisible(blockByName(blockName));
-        // Пробуем навести на блок, чтобы кнопка удаления появилась (если она скрыта до наведения)
+        // Ищем заголовок блока по имени и поднимаемся к контейнеру
+        WebElement title = waitForInVisible(blockTitleByName(blockName));
+        WebElement container = title.findElement(By.xpath("./ancestor::*[self::a or self::div or self::tr][1]"));
+
+        // Пробуем навести на контейнер, чтобы кнопка удаления появилась (если она скрыта до наведения)
         Actions actions = new Actions(driver);
-        actions.moveToElement(blockElement).perform();
-        // Ждем появления и кликабельности кнопки удаления
-        waitForClicableElement(DELETE_BLOCK).click();
-        Alert alert = driver.switchTo().alert();
-        alert.accept();
+        actions.moveToElement(container).perform();
+
+        // Ищем кнопку удаления внутри контейнера (если не найдена - fallback на общий локатор)
+        WebElement deleteBtn;
+        try {
+            deleteBtn = container.findElement(By.xpath(".//button[contains(@class, 'category-delete-x-button') and normalize-space()='×']"));
+        } catch (NoSuchElementException e) {
+            deleteBtn = waitForClicableElement(DELETE_BLOCK);
+        }
+
+        wait.until(ExpectedConditions.elementToBeClickable(deleteBtn)).click();
+
+        // Подтверждение alert может отсутствовать в некоторых окружениях
+        try {
+            Alert alert = driver.switchTo().alert();
+            alert.accept();
+        } catch (NoAlertPresentException ignored) {
+            // no-op
+        }
         return this;
     }
 
@@ -164,15 +195,15 @@ public class HeadPage {
      */
     public boolean isBlockPresent(String blockName) {
         try {
-            return !driver.findElements(blockByName(blockName)).isEmpty();
+            return !driver.findElements(blockTitleByName(blockName)).isEmpty();
         } catch (Exception e) {
             return false;
         }
     }
 
-    private By blockByName(String blockName) {
-        // Ищем ссылку, внутри которой заголовок h3 ровно равен имени блока
-        return By.xpath("//a[h3=normalize-space()=" + toXpathString(blockName) + "]");
+    private By blockTitleByName(String blockName) {
+        // Ищем заголовок блока h3 по тексту (менее привязано к конкретной разметке)
+        return By.xpath("//h3[normalize-space()=" + toXpathString(blockName) + "]");
     }
 
     /**
