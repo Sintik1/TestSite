@@ -28,6 +28,7 @@ public class DatabaseHelper {
      * В тестах обычно один процесс JVM, поэтому volatile достаточно.
      */
     private volatile boolean databaseEnsured = false;
+    private volatile boolean tableEnsured = false;
 
     // jdbc:postgresql://host:port/dbName?params
     private static final Pattern PG_JDBC_URL =
@@ -66,7 +67,20 @@ public class DatabaseHelper {
             }
         }
 
-        return openConnection(dbUrl);
+        Connection conn = openConnection(dbUrl);
+
+        // Аналогично БД: в CI таблицы могут не быть созданы миграциями.
+        // Попробуем создать минимальную таблицу под тесты.
+        if (!tableEnsured) {
+            synchronized (this) {
+                if (!tableEnsured) {
+                    ensureTableExists(conn);
+                    tableEnsured = true;
+                }
+            }
+        }
+
+        return conn;
     }
 
     private Connection openConnection(String url) throws SQLException {
@@ -108,6 +122,68 @@ public class DatabaseHelper {
             // 42P04 = duplicate_database
             if (!"42P04".equals(createEx.getSQLState())) {
                 System.err.println("Не удалось создать БД '" + info.database + "': " + createEx.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Создаёт таблицу для тестов, если она отсутствует.
+     *
+     * По умолчанию создаётся таблица:
+     *  - имя: categories (или DB_TABLE)
+     *  - колонки: id (или DB_ID_COLUMN), name (или DB_NAME_COLUMN)
+     *
+     * Можно отключить автосоздание таблицы:
+     *  - env DB_AUTO_CREATE_TABLE=false
+     *  - или -Ddb.autoCreateTable=false
+     */
+    private void ensureTableExists(Connection conn) {
+        String auto = System.getenv().getOrDefault(
+                "DB_AUTO_CREATE_TABLE",
+                System.getProperty("db.autoCreateTable", "true")
+        );
+        if (!Boolean.parseBoolean(auto)) {
+            return;
+        }
+
+        // В PostgreSQL по умолчанию используется schema "public".
+        String schema = System.getenv().getOrDefault(
+                "DB_SCHEMA",
+                System.getProperty("db.schema", "public")
+        );
+
+        try {
+            if (tableExists(conn, schema, tableName)) {
+                return;
+            }
+
+            String fullTableName = quoteIdentifier(schema) + "." + quoteIdentifier(tableName);
+            String idCol = quoteIdentifier(idColumn);
+            String nameCol = quoteIdentifier(nameColumn);
+
+            // Минимальная структура под проверки тестов
+            String ddl = "CREATE TABLE " + fullTableName + " ("
+                    + idCol + " SERIAL PRIMARY KEY, "
+                    + nameCol + " VARCHAR(255) NOT NULL"
+                    + ")";
+
+            try (Statement st = conn.createStatement()) {
+                st.executeUpdate(ddl);
+            }
+        } catch (SQLException e) {
+            // Не роняем тесты на инфраструктурных проблемах, но оставляем след в логах
+            System.err.println("Не удалось проверить/создать таблицу для тестов: " + e.getMessage());
+        }
+    }
+
+    private boolean tableExists(Connection conn, String schema, String table) throws SQLException {
+        String sql = "SELECT 1 FROM information_schema.tables "
+                + "WHERE table_schema = ? AND table_name = ? LIMIT 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
             }
         }
     }

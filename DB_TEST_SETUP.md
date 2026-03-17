@@ -57,22 +57,22 @@ export DB_ID_COLUMN="id"
 Пример настройки в `docker-compose.yml`:
 ```yaml
 services:
-  jenkins:
-    environment:
-      - DB_URL=jdbc:postgresql://postgres:5432/goals_db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-    depends_on:
-      - postgres
-  
-  postgres:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=goals_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    ports:
-      - "5432:5432"
+   jenkins:
+      environment:
+         - DB_URL=jdbc:postgresql://postgres:5432/goals_db
+         - DB_USER=postgres
+         - DB_PASSWORD=postgres
+      depends_on:
+         - postgres
+
+   postgres:
+      image: postgres:15
+      environment:
+         - POSTGRES_DB=goals_db
+         - POSTGRES_USER=postgres
+         - POSTGRES_PASSWORD=postgres
+      ports:
+         - "5432:5432"
 ```
 
 ## Структура таблицы
@@ -85,6 +85,21 @@ CREATE TABLE categories (
     name VARCHAR(255) NOT NULL,
     -- другие колонки...
 );
+```
+
+## Автосоздание таблицы `categories`
+
+Если в БД нет таблицы (ошибка вида `ERROR: relation "categories" does not exist`), тестовый `DatabaseHelper`
+может **создать минимальную таблицу автоматически** (по умолчанию включено).
+
+Переменные для управления:
+
+```bash
+# Включить/выключить автосоздание таблицы (по умолчанию true)
+export DB_AUTO_CREATE_TABLE="true"
+
+# Схема (по умолчанию public)
+export DB_SCHEMA="public"
 ```
 
 ## Использование MySQL вместо PostgreSQL
@@ -131,6 +146,16 @@ if (dbHelper.testConnection()) {
 - Тесты не упадут с ошибкой
 - Метод `goalExists()` вернет `false` при ошибке подключения
 - Это позволяет запускать тесты даже без БД (только UI проверки)
+
+### Автосоздание базы `goals_db` (PostgreSQL)
+
+Если `DB_URL` указывает на PostgreSQL и при подключении возвращается ошибка вида:
+`FATAL: database "goals_db" does not exist`, тестовый хелпер попробует **создать базу автоматически**
+через подключение к системной базе `postgres`.
+
+Важно:
+- Это сработает только если у пользователя (`DB_USER`) есть права на `CREATE DATABASE` (например, `postgres`).
+- В CI правильнее всё равно создавать БД на уровне `docker-compose` через `POSTGRES_DB=goals_db`.
 
 Для строгой проверки БД убедитесь, что БД доступна перед запуском тестов.
 
